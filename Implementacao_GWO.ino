@@ -3,6 +3,8 @@ int calcularMediana();
 void desvioE();
 void desvioD();
 float obstaculo();
+float calcularCusto(float distancia, int VelAtual, int VelAnterior);
+float calcularRisco(float distancia, int VelAtual);
 
 byte ire = 31, ird = 30; //31 fio branco e 32 fio cinza
 
@@ -15,11 +17,11 @@ int arrayBe[numAmostras];
 int arrayRd[numAmostras];
 int arrayGd[numAmostras];
 int arrayBd[numAmostras];
+// Variaveis do GWO
 int VelAtual = 255; 
 int VelAnterior;
-int suavidade;
-int colisao;
 int distancia;
+float custo;
 
 byte OUTd = 34, S2d = 32, S3d = 33, pulseRd = 0, pulseGd = 0, pulseBd = 0;
 byte OUTe = 37, S2e = 38, S3e = 39, pulseRe = 0, pulseGe = 0, pulseBe = 0;
@@ -93,7 +95,11 @@ void loop() {
     }else{
       VelAtual = 255;
     }
+
+
     // Aprimoramento
+    //Impelementação da função custo
+    custo = calcularCusto(distancia, VelAtual, VelAnterior);
     // verde();
 
     Serial.println("Saí do if");
@@ -163,6 +169,37 @@ void loop() {
   }
 }
 
+float calcularCusto(float distancia,int VelAtual,int VelAnterior){
+    float custo;
+    float suavidade;
+    float VelDesejada;
+    float risco = calcularRisco(VelAtual, distancia);
+
+    if(distancia<=60){
+      VelDesejada = 80 + 2.9167*distancia;
+    }else{
+      VelDesejada = 255;
+    }
+
+    suavidade = (VelAtual - VelDesejada) / 255;
+
+    custo = suavidade * risco;
+
+
+
+}
+
+float calcularRisco(int VelAtual, float distancia){
+
+  float riscoD = 1 - (distancia/60);
+
+  float riscoV = VelAtual/255;
+  
+  float risco = riscoD * riscoV;
+  return risco;
+
+
+}
 void verde() {
   //LEITURA SENSOR DIREITA
   Serial.println("Leitura direita");
