@@ -3,8 +3,9 @@ int calcularMediana();
 void desvioE();
 void desvioD();
 float obstaculo();
-float calcularCusto(float distancia, int VelAtual, int VelAnterior);
-float calcularRisco(float distancia, int VelAtual);
+float calcularCusto(float distancia, int VelAtual, int VelLobo, float VelDesejada);
+float calcularRisco(int VelLobo, float distancia);
+
 
 byte ire = 31, ird = 30; //31 fio branco e 32 fio cinza
 
@@ -19,9 +20,12 @@ int arrayGd[numAmostras];
 int arrayBd[numAmostras];
 // Variaveis do GWO
 int VelAtual = 255; 
-int VelAnterior;
+int VelDesejada;
 int distancia;
-float custo;
+float custo[5];
+// Lobos
+int lobos[5], i = 0;
+float menorcusto = 99999;
 
 byte OUTd = 34, S2d = 32, S3d = 33, pulseRd = 0, pulseGd = 0, pulseBd = 0;
 byte OUTe = 37, S2e = 38, S3e = 39, pulseRe = 0, pulseGe = 0, pulseBe = 0;
@@ -91,32 +95,60 @@ void loop() {
     }
     // V1
     if(distancia<=60){
-      VelAtual = 80 + 2,9167*distancia;
+      VelDesejada = 80 + 2.9167*distancia;
     }else{
-      VelAtual = 255;
+      VelDesejada = 255;
     }
+    float diferenca = (VelAtual - VelDesejada)/5;
 
+    for(int i2 = 0; i2 < 5; i2++){
+    
+      lobos[i2] = VelAtual - diferenca*(i2+1);
+      lobos[i2] = constrain(lobos[i2], 80, 255);
+      
+    }
 
     // Aprimoramento
     //Impelementação da função custo
-    custo = calcularCusto(distancia, VelAtual, VelAnterior);
+    // Escolher o lobo com menor custo
+
+    for(i = 0; i < 5; i++){
+      custo[i] = calcularCusto(distancia, VelAtual, lobos[i], VelDesejada);
+    }
+
+    for(i = 0; i<5; i++){
+      if(custo[i] < menorcusto){
+        menorcusto = custo[i];
+        VelAtual = lobos[i];
+      }
+    }
+
+    Serial.print("menor custo:");
+    Serial.println(menorcusto);
+    Serial.print("Melhor lobo:");
+    Serial.print(VelAtual);
+
+    
+    
+    
+
     // verde();
 
     Serial.println("Saí do if");
 
-    analogWrite(enable1, 100); // Esquerda Frente
+    analogWrite(enable1, VelAtual); // Esquerda Frente
     digitalWrite(sentido1, HIGH);
     digitalWrite(sentido2, LOW);
 
-    analogWrite(enable2, 100); // Esquerda Atras
+    analogWrite(enable2, VelAtual); // Esquerda Atras
     digitalWrite(sentido3, LOW);
     digitalWrite(sentido4, HIGH);
 
-    analogWrite(enable3, 100); // Direita Atras
+    analogWrite(enable3, VelAtual); // Direita Atras
     digitalWrite(sentido5, LOW);
     digitalWrite(sentido6, HIGH);
 
-    analogWrite(enable4, 100); // Direita Frente
+    analogWrite(enable4, VelAtual); // Direita Frente
     digitalWrite(sentido7, LOW);
     digitalWrite(sentido8, HIGH);
 
@@ -124,19 +156,19 @@ void loop() {
     if(((leituraIre == HIGH) && (leituraIrd == LOW))){
       //curva esquerda
 
-      analogWrite(enable1, 100); // Esquerda Frente
+      analogWrite(enable1, VelAtual); // Esquerda Frente
       digitalWrite(sentido1, LOW);
       digitalWrite(sentido2, HIGH);
 
-      analogWrite(enable2, 255); // Esquerda Atras
+      analogWrite(enable2, VelAtual); // Esquerda Atras
       digitalWrite(sentido3, HIGH);
       digitalWrite(sentido4, LOW);
 
-      analogWrite(enable3, 255); // Direita Atras
+      analogWrite(enable3, VelAtual); // Direita Atras
       digitalWrite(sentido5, LOW);
       digitalWrite(sentido6, HIGH);
 
-      analogWrite(enable4, 100); // Direita Frente
+      analogWrite(enable4, VelAtual); // Direita Frente
       digitalWrite(sentido7, HIGH);
       digitalWrite(sentido8, LOW);
 
@@ -146,19 +178,19 @@ void loop() {
       if(((leituraIre == LOW) && (leituraIrd == HIGH))){
         //curva direita
 
-        analogWrite(enable1, 100); // Esquerda Frente
+        analogWrite(enable1, VelAtual); // Esquerda Frente
         digitalWrite(sentido1, HIGH);
         digitalWrite(sentido2, LOW);
 
-        analogWrite(enable2, 255); // Esquerda Atras
+        analogWrite(enable2, VelAtual); // Esquerda Atras
         digitalWrite(sentido3, LOW);
         digitalWrite(sentido4, HIGH);
 
-        analogWrite(enable3, 255); // Direita Atras
+        analogWrite(enable3, VelAtual); // Direita Atras
         digitalWrite(sentido5, HIGH);
         digitalWrite(sentido6, LOW);
 
-        analogWrite(enable4, 100); // Direita Frente
+        analogWrite(enable4, VelAtual); // Direita Frente
         digitalWrite(sentido7, HIGH);
         digitalWrite(sentido8, LOW);
 
@@ -169,33 +201,29 @@ void loop() {
   }
 }
 
-float calcularCusto(float distancia,int VelAtual,int VelAnterior){
+float calcularCusto(float distancia,int VelAtual, int VelLobo, float VelDesejada){
     float custo;
     float suavidade;
-    float VelDesejada;
-    float risco = calcularRisco(VelAtual, distancia);
+    float diferenca;
+    float w1 = 0.4, w2 = 0.4, w3 = 0.2;
+    float risco = calcularRisco(VelLobo, distancia);
 
-    if(distancia<=60){
-      VelDesejada = 80 + 2.9167*distancia;
-    }else{
-      VelDesejada = 255;
-    }
+    suavidade = (VelAtual - VelLobo) / 255;
+    // quanto mais perto de 1, mais ruim é a suaviade, ou seja, lobao ruim
+    diferenca = abs(VelLobo - VelDesejada)/255;
 
-    suavidade = (VelAtual - VelDesejada) / 255;
-
-    custo = suavidade * risco;
-
-
-
+    custo = w1 * suavidade + risco * w2 + diferenca * w3;
+    return custo;
 }
 
-float calcularRisco(int VelAtual, float distancia){
+float calcularRisco(int VelLobo, float distancia){
 
   float riscoD = 1 - (distancia/60);
 
-  float riscoV = VelAtual/255;
+  float riscoV = VelLobo/255;
   
   float risco = riscoD * riscoV;
+  //quanto mais perto de 1, o risco de batida é maior, ou seja, lobao ruim;
   return risco;
 
 
