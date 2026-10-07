@@ -3,7 +3,7 @@ int calcularMediana();
 void desvioE();
 void desvioD();
 float obstaculo();
-float calcularCusto(float distancia, int VelAtual, int VelLobo, float VelDesejada);
+float calcularCusto(float distancia, int VelAtual, int VelLobo, int VelDesejada);
 float calcularRisco(int VelLobo, float distancia);
 
 
@@ -25,12 +25,13 @@ int distancia;
 float custo[5];
 // Lobos
 int lobos[5], i = 0;
-float menorcusto = 99999;
+float menorcusto;
+int i2;
 
 byte OUTd = 34, S2d = 32, S3d = 33, pulseRd = 0, pulseGd = 0, pulseBd = 0;
 byte OUTe = 37, S2e = 38, S3e = 39, pulseRe = 0, pulseGe = 0, pulseBe = 0;
 //lembrar de modificar os pinos do echo e do trigger, vai dar erro
-byte trigger = 35, echo = 36, cont = 0;
+byte trigger = 44, echo = 42, cont = 0;
 float duration, distance;
 
 byte sentido1 = 22, sentido2 = 23, enable1 = 2;
@@ -76,6 +77,7 @@ void setup() {
 }
 //Branco: entre 0 e 50/ Preto: maior que 100 / Verde: entra 50 e 100
 void loop() {
+  menorcusto = 999999;
   leituraIre = digitalRead(ire);
   leituraIrd = digitalRead(ird);
   // Impelmentação do GWO: Algoritmo de Otimização dos Lobos; AUUU 
@@ -95,18 +97,23 @@ void loop() {
     }
     // V1
     if(distancia<=60){
-      VelDesejada = 80 + 2.9167*distancia;
+      VelDesejada = 70 + ((distancia - 15) * 175.0 / 65.0);
     }else{
       VelDesejada = 255;
     }
+
+    
+
     float diferenca = (VelAtual - VelDesejada)/5;
 
-    for(int i2 = 0; i2 < 5; i2++){
+
+    for( i2 = 0; i2 < 5; i2++){
     
       lobos[i2] = VelAtual - diferenca*(i2+1);
       lobos[i2] = constrain(lobos[i2], 80, 255);
       
     }
+
 
     // Aprimoramento
     //Impelementação da função custo
@@ -201,17 +208,17 @@ void loop() {
   }
 }
 
-float calcularCusto(float distancia,int VelAtual, int VelLobo, float VelDesejada){
+float calcularCusto(float distancia,int VelAtual, int VelLobo, int VelDesejada){
     float custo;
     float suavidade;
     float diferenca;
     float w1 = 0.4, w2 = 0.4, w3 = 0.2;
     float risco = calcularRisco(VelLobo, distancia);
+    suavidade = (VelAtual - VelLobo) / 255.0;
 
-    suavidade = (VelAtual - VelLobo) / 255;
     // quanto mais perto de 1, mais ruim é a suaviade, ou seja, lobao ruim
-    diferenca = abs(VelLobo - VelDesejada)/255;
-
+    diferenca = abs(VelLobo - VelDesejada)/255.0;
+  
     custo = w1 * suavidade + risco * w2 + diferenca * w3;
     return custo;
 }
@@ -220,7 +227,7 @@ float calcularRisco(int VelLobo, float distancia){
 
   float riscoD = 1 - (distancia/60);
 
-  float riscoV = VelLobo/255;
+  float riscoV = VelLobo/255.0;
   
   float risco = riscoD * riscoV;
   //quanto mais perto de 1, o risco de batida é maior, ou seja, lobao ruim;
